@@ -1,0 +1,11 @@
+[target.wasm32-wasi]
+rustflags = ["-C", "debuginfo=2"]
+
+[build]
+target = "wasm32-wasi"
+
+[profile.dev]
+opt-level = "z"
+
+[profile.release]
+opt-level = "z"

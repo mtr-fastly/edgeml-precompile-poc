@@ -1,9 +1,28 @@
 mod log;
 mod ml;
 
+use std::io::Cursor;
+use std::ops::Deref;
 use fastly::http::{Method, StatusCode};
 use fastly::{Error, Request, Response};
 use log::emit_log;
+use tract_flavour::prelude::{Datum, Framework, Graph, InferenceFact, InferenceModelExt, RunnableModel, tvec, TypedFact, TypedOp};
+use once_cell::sync::Lazy;
+
+pub static MODEL: Lazy<RunnableModel<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>> = Lazy::new( || {
+    tract_flavour::onnx()
+        .model_for_read(&mut Cursor::new(include_bytes!("../models/mobilenet_v2.onnx"))).expect("Unable to read model.")
+        .with_input_fact(0, InferenceFact::dt_shape(f32::datum_type(), tvec!(1, 3, 224,224))).expect("Input fact error.")
+        // .with_output_fact(0,InferenceFact::dt_shape(f32::datum_type(), tvec!(1, 48, 112,112))).expect("Output fact error.")
+        // Optimize the model.
+        .into_optimized().expect("Optimization error.")
+        // Make the model runnable and fix its inputs and outputs.
+        .into_runnable().expect("Runnable transform failed.")
+});
+#[export_name = "wizer.initialize"]
+pub extern "C" fn init() {
+    Lazy::force(&MODEL);
+}
 
 #[fastly::main]
 fn main(mut req: Request) -> Result<Response, Error> {
@@ -19,8 +38,7 @@ fn main(mut req: Request) -> Result<Response, Error> {
                 &session,
                 "Loading model mobilenet_v2_1.4_224 (ImageNet).",
             );
-            let model = include_bytes!("../models/mobilenet_v2_1.4_224_frozen.pb");
-            match ml::infer(model, &req.take_body_bytes(), &session) {
+            match ml::infer(MODEL.deref(), &req.take_body_bytes(), &session) {
                 Ok((confidence, label_index)) => {
                     emit_log(
                         context,

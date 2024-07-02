@@ -1,8 +1,14 @@
 # This file describes a Fastly Compute@Edge package. To learn more visit:
 # https://developer.fastly.com/reference/fastly-toml/
 
-authors = ["<dmilitaru@fastly.com>"]
+authors = ["<dmilitaru@fastly.com>,<mtr@fastly.com>"]
 description = "Machine learning inference at the edge"
 language = "rust"
-manifest_version = 2
-name = "edgeml"
+manifest_version = 3
+name = "edgeml-precompile-poc"
+
+[scripts]
+build = "cargo build --bin edgeml --release --target wasm32-wasi --color always"
+post_build = """wizer --wasm-bulk-memory true --allow-wasi bin/main.wasm -o bin/main.wizer.wasm \
+    && wasm-opt -Os bin/main.wizer.wasm -o bin/main.wasm \
+    && rm bin/main.wizer.wasm"""

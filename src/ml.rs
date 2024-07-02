@@ -1,25 +1,19 @@
 use std::io::Cursor;
+use once_cell::sync::Lazy;
 use tract_flavour::prelude::*;
 use crate::log::emit_log;
 
+
+
 // The inference function returns a tuple:
 // (confidence, index of the predicted class)
-pub fn infer(model_bytes: &[u8], image_bytes: &[u8], session: &str) -> TractResult<(f32,i32)> {
+pub fn infer(model: &RunnableModel<TypedFact,Box<dyn TypedOp>,Graph<TypedFact, Box<dyn TypedOp>>>, image_bytes: &[u8], session: &str) -> TractResult<(f32,i32)> {
     let context = "inference_engine";
     emit_log(
         context,
         session,
         "Optimizing runnable Tensorflow model for F32 datum type, tensor shape [1, 224, 224, 3].",
     );
-    let model = tract_flavour::tensorflow() // swap in ::nnef() for the tract-nnef package, etc.
-        // Load the model.
-        .model_for_read(&mut Cursor::new(model_bytes))?
-        // Specify input type and shape.
-        .with_input_fact(0,InferenceFact::dt_shape(f32::datum_type(), tvec!(1, 224, 224, 3)))?
-        // Optimize the model.
-        .into_optimized()?
-        // Make the model runnable and fix its inputs and outputs.
-        .into_runnable()?;
 
     // Create a new image from the image byte slice.
     let img = image::load_from_memory(image_bytes)?.to_rgb8();
@@ -42,10 +36,10 @@ pub fn infer(model_bytes: &[u8], image_bytes: &[u8], session: &str) -> TractResu
     let img: Tensor = tract_ndarray::Array4::from_shape_fn((1, 224, 224, 3), |(_, y, x, c)| {
         resized[(x as _, y as _)][c] as f32 / 255.0
     })
-    .into();
+    .into_tensor();
 
     // Run the model on the input.
-    let result = model.run(tvec!(img))?;
+    let result = model.run(tvec!(img.into()))?;
     emit_log(
         context,
         session,
