@@ -6,4 +6,4 @@ description = "Static host for EdgeML demo"
 language = "rust"
 manifest_version = 2
 name = "edgeml-docs"
-service_id = "7TQh1U0EJ5WzmfX18G8gYN"
+service_id = "0pMptztfplcd4U8BMNLxY4"

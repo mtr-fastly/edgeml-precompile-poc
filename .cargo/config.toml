@@ -1,5 +1,6 @@
 [target.wasm32-wasi]
 rustflags = ["-C", "debuginfo=2"]
+runner = "viceroy run -C fastly.toml -- "
 
 [build]
 target = "wasm32-wasi"
@@ -9,3 +10,6 @@ opt-level = "z"
 
 [profile.release]
 opt-level = "z"
+
+[env]
+RUST_LOG = "info"
